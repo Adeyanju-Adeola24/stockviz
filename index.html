@@ -414,6 +414,12 @@ body {
 .timeframe-btn:hover { border-color: var(--accent); color: var(--accent); }
 .timeframe-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* Chart type toggle */
+.chart-toggle-bar { display: flex; gap: 4px; margin-top: 8px; justify-content: center; }
+.chart-type-btn { padding: 3px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s; }
+.chart-type-btn:hover { border-color: var(--accent); color: var(--accent); }
+.chart-type-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 .detail-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -597,12 +603,17 @@ function genQuote(ticker) {
   };
 }
 
-function genSparkline(count, vol) {
+function genCandles(count, vol) {
   let price = 100 + Math.random() * 200;
   const v = vol || 1;
   return Array.from({ length: count }, () => {
-    price += (Math.random() - 0.48) * 2.2 * v;
-    return Math.round(price * 100) / 100;
+    const open = Math.round(price * 100) / 100;
+    const change = (Math.random() - 0.48) * 6 * v;
+    const close = Math.round((price + change) * 100) / 100;
+    const high = Math.round((Math.max(open, close) + Math.random() * 1.5) * 100) / 100;
+    const low = Math.round((Math.min(open, close) - Math.random() * 1.5) * 100) / 100;
+    price = close;
+    return { o: open, h: Math.max(high, open, close), l: Math.min(low, open, close), c: close };
   });
 }
 
@@ -612,6 +623,7 @@ const STATE = {
   stocks: {},
   selectedTicker: null,
   timeframe: '1D',
+  chartType: 'candle',
   dark: localStorage.getItem('stockviz_dark') === 'true',
 };
 
@@ -632,16 +644,19 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   applyTheme();
 });
 
-// === SPARKLINE DATA PER TIMEFRAME ===
+// === CANDLE DATA PER TIMEFRAME ===
 function getSparklineData(ticker, timeframe) {
-  const base = PRICES[ticker]?.p || 100;
   switch (timeframe) {
-    case '1D': return genSparkline(78, 1);
-    case '1W': return genSparkline(30, 1.5);
-    case '1M': return genSparkline(22, 2);
-    case '1Y': return genSparkline(52, 3);
-    default: return genSparkline(78, 1);
+    case '1D': return genCandles(78, 1);
+    case '1W': return genCandles(30, 1.5);
+    case '1M': return genCandles(22, 2);
+    case '1Y': return genCandles(52, 3);
+    default: return genCandles(78, 1);
   }
+}
+
+function candleCloses(candles) {
+  return candles.map(c => c.c);
 }
 
 // === CANVAS SPARKLINE ===
@@ -687,6 +702,78 @@ function renderSparkline(canvas, prices, color) {
   ctx.arc(xs[xs.length - 1], ys[xs.length - 1], 3, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
+}
+
+// === CANVAS CANDLESTICK CHART ===
+function renderCandles(canvas, candles, upColor, downColor) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr, h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+  if (!candles || candles.length < 2) return;
+
+  const min = Math.min(...candles.map(c => c.l));
+  const max = Math.max(...candles.map(c => c.h));
+  const range = max - min || 1;
+
+  const totalGap = w - 10;
+  const gap = totalGap / candles.length;
+  const cw = Math.max(2, gap * 0.65);
+  const pad = (gap - cw) / 2;
+
+  function yFor(v) { return h - ((v - min) / range) * (h - 12) - 6; }
+
+  candles.forEach((c, i) => {
+    const x = 5 + gap * i + pad;
+    const isUp = c.c >= c.o;
+    const color = isUp ? upColor : downColor;
+    const cx = x + cw / 2;
+
+    // Wick
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.moveTo(cx, yFor(c.h));
+    ctx.lineTo(cx, yFor(c.l));
+    ctx.stroke();
+
+    // Body
+    const top = yFor(Math.max(c.o, c.c));
+    const bot = yFor(Math.min(c.o, c.c));
+    const bh = Math.max(1, bot - top);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, top, cw, bh);
+  });
+}
+
+// === VOLUME BARS ===
+function renderVolumeBars(canvas, candles, upColor, downColor) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr, h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+  if (!candles || candles.length < 2) return;
+
+  const totalGap = w - 10;
+  const gap = totalGap / candles.length;
+  const cw = Math.max(1, gap * 0.65);
+  const pad = (gap - cw) / 2;
+
+  // Use volume array or generate
+  const vols = candles.map(() => Math.random() * 0.8 + 0.2);
+  const maxVol = Math.max(...vols);
+
+  candles.forEach((c, i) => {
+    const x = 5 + gap * i + pad;
+    const isUp = c.c >= c.o;
+    const barH = (vols[i] / maxVol) * (h - 6);
+    ctx.fillStyle = isUp ? upColor : downColor;
+    ctx.globalAlpha = 0.4;
+    ctx.fillRect(x, h - 3 - barH, cw, barH);
+    ctx.globalAlpha = 1;
+  });
 }
 
 // === WATCHLIST ===
@@ -763,9 +850,10 @@ function renderWatchlist() {
 
   STATE.watchlist.forEach(t => {
     const s = STATE.stocks[t];
-    if (!s) return;
+    if (!s || !s.sparkline) return;
     const canvas = ul.querySelector(`[data-ticker="${t}"] .wl-sparkline`);
-    if (canvas) renderSparkline(canvas, s.sparkline, s.quote.d >= 0 ? '#059669' : '#dc2626');
+    const prices = s.sparkline[0]?.o ? candleCloses(s.sparkline) : s.sparkline;
+    if (canvas) renderSparkline(canvas, prices, s.quote.d >= 0 ? '#059669' : '#dc2626');
   });
 }
 
@@ -795,6 +883,8 @@ function renderDetail() {
   const sector = SECTORS[STATE.selectedTicker] || 'Other';
   const sectorClass = 'sector-' + sector.toLowerCase();
 
+  const candles = s.sparkline && s.sparkline[0]?.o ? s.sparkline : null;
+
   container.innerHTML = `
     <div class="detail-header">
       <div class="detail-header-top">
@@ -810,7 +900,12 @@ function renderDetail() {
         <span class="detail-price">$${q.c.toFixed(2)}</span>
         <span class="detail-change ${isUp ? 'up' : 'down'}">${isUp ? '+' : ''}${q.dp.toFixed(2)}%</span>
       </div>
-      <canvas id="detailSparkline" width="800" height="140"></canvas>
+      <canvas id="chartMain" width="800" height="160"></canvas>
+      <canvas id="chartVolume" width="800" height="40"></canvas>
+      <div class="chart-toggle-bar">
+        <button class="chart-type-btn ${STATE.chartType === 'candle' ? 'active' : ''}" data-ct="candle">Candle</button>
+        <button class="chart-type-btn ${STATE.chartType === 'line' ? 'active' : ''}" data-ct="line">Line</button>
+      </div>
       <div class="timeframe-bar" id="timeframeBar">
         <button class="timeframe-btn ${STATE.timeframe === '1D' ? 'active' : ''}" data-tf="1D">1D</button>
         <button class="timeframe-btn ${STATE.timeframe === '1W' ? 'active' : ''}" data-tf="1W">1W</button>
@@ -829,16 +924,38 @@ function renderDetail() {
       <div class="stat"><span class="stat-label">52W Low</span><span class="stat-value">$${q.w52l.toFixed(2)}</span></div>
     </div>`;
 
-  // Detail sparkline
-  const canvas = document.getElementById('detailSparkline');
-  if (canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
+  // Draw charts
+  const mainCanvas = document.getElementById('chartMain');
+  const volCanvas = document.getElementById('chartVolume');
+  if (mainCanvas && volCanvas) {
+    const rect = mainCanvas.parentElement.getBoundingClientRect();
     const w = Math.min(800, rect.width - 8);
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = 140 * dpr;
-    renderSparkline(canvas, s.sparkline, isUp ? '#059669' : '#dc2626');
+    mainCanvas.width = w * dpr;
+    mainCanvas.height = 160 * dpr;
+    volCanvas.width = w * dpr;
+    volCanvas.height = 40 * dpr;
+
+    const upColor = '#059669';
+    const downColor = '#dc2626';
+
+    if (STATE.chartType === 'candle' && candles) {
+      renderCandles(mainCanvas, candles, upColor, downColor);
+      renderVolumeBars(volCanvas, candles, upColor, downColor);
+    } else {
+      const prices = candles ? candleCloses(candles) : s.sparkline;
+      renderSparkline(mainCanvas, prices, isUp ? upColor : downColor);
+    }
   }
+
+  // Chart type toggle listeners
+  document.querySelectorAll('.chart-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      STATE.chartType = btn.dataset.ct;
+      renderDetail();
+      renderWatchlist();
+    });
+  });
 
   // Timeframe listeners
   document.querySelectorAll('.timeframe-btn').forEach(btn => {

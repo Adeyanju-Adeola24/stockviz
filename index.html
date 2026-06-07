@@ -930,7 +930,11 @@ document.getElementById('searchInput').addEventListener('keydown', e => {
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
   loadAllStocks();
-  renderAll();
+  // Always show first stock's detail immediately
+  if (STATE.watchlist.length) {
+    STATE.selectedTicker = STATE.watchlist[0];
+    renderAll();
+  }
   // Auto-refresh prices every 30s
   setInterval(() => {
     STATE.watchlist.forEach(t => { STATE.stocks[t] = makeStock(t); });

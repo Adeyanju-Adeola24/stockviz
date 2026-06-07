@@ -447,6 +447,27 @@ const BRANDS = {
   DIA: '#000', IWM: '#000',
 };
 
+const DOMAINS = {
+  AAPL:'apple.com', MSFT:'microsoft.com', GOOGL:'abc.xyz', NVDA:'nvidia.com', TSLA:'tesla.com',
+  AMZN:'amazon.com', META:'meta.com', AMD:'amd.com', JPM:'jpmorganchase.com', V:'visa.com',
+  DIS:'disney.com', NFLX:'netflix.com', BA:'boeing.com', GS:'goldmansachs.com', CRM:'salesforce.com',
+  ADBE:'adobe.com', UBER:'uber.com', PYPL:'paypal.com', INTC:'intel.com', BABA:'alibabagroup.com',
+  SNAP:'snap.com', NIO:'nio.com', PLTR:'palantir.com', SQ:'block.xyz', SHOP:'shopify.com',
+  SNOW:'snowflake.com', DDOG:'datadoghq.com', MRNA:'modernatx.com', GM:'gm.com', F:'ford.com',
+  COIN:'coinbase.com', SPOT:'spotify.com', RIVN:'rivian.com', LCID:'lucidmotors.com',
+  HOOD:'robinhood.com', SOFI:'sofi.com', RBLX:'roblox.com', PINS:'pinterest.com',
+  MA:'mastercard.com', SPY:'spdrs.com', QQQ:'invesco.com', DIA:'spdrs.com', IWM:'blackrock.com',
+};
+
+function avatarHTML(ticker, size=28, fontSize=11) {
+  const bc=BRANDS[ticker]||'#555', domain=DOMAINS[ticker];
+  const fallback=`<span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:${bc}20;color:${bc};font-size:${fontSize}px;font-weight:700;border-radius:${Math.round(size*0.285)}px">${ticker.slice(0,2)}</span>`;
+  if(!domain) return `<span class="wl-avatar" style="width:${size}px;height:${size}px;background:${bc}20;color:${bc};font-size:${fontSize}px">${ticker.slice(0,2)}</span>`;
+  return `<span class="wl-avatar" style="width:${size}px;height:${size}px;position:relative;overflow:hidden;background:${bc}08;border:1px solid ${bc}15">
+    <img src="https://logo.clearbit.com/${domain}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:contain;padding:3px" loading="lazy" alt="${ticker}">${fallback}
+  </span>`;
+}
+
 const SECTORS = {
   AAPL: 'Tech', MSFT: 'Tech', GOOGL: 'Tech', NVDA: 'Tech', META: 'Tech', AMD: 'Tech',
   CRM: 'Tech', ADBE: 'Tech', SNOW: 'Tech', DDOG: 'Tech', SHOP: 'Tech', SQ: 'Tech',
@@ -643,9 +664,9 @@ function renderWatchlist() {
   const ul = document.getElementById('watchlist');
   ul.innerHTML = STATE.watchlist.map((t,i)=>{
     const s=STATE.stocks[t]; if(!s) return '';
-    const isUp=s.quote.d>=0, bc=BRANDS[t]||'#555';
+    const isUp=s.quote.d>=0;
     return `<li class="watchlist-item ${STATE.selectedTicker===t?'active':''}" data-ticker="${t}" onclick="selectTicker('${t}')" style="animation:fadeSlideUp .3s ease both;animation-delay:${i*0.03}s">
-      <span class="wl-avatar" style="background:${bc}20;color:${bc}">${t.slice(0,2)}</span>
+      ${avatarHTML(t)}
       <span class="wl-ticker">${t}</span>
       <span class="wl-price ${isUp?'up':'down'}">$${s.quote.c.toFixed(2)}</span>
       <span class="wl-change ${isUp?'up':'down'}">${isUp?'+':''}${s.quote.dp.toFixed(2)}%</span>
@@ -685,7 +706,7 @@ function renderDetail() {
     <div class="detail-header">
       <div class="detail-header-top">
         <div style="display:flex;align-items:center;gap:10px">
-          <span class="detail-avatar" style="background:${bc}20;color:${bc}">${STATE.selectedTicker.slice(0,1)}</span>
+          ${avatarHTML(STATE.selectedTicker, 36, 14)}
           <div>
             <h2 class="detail-ticker">${STATE.selectedTicker} &middot; ${PRICES[STATE.selectedTicker]?.n||'Unknown'}</h2>
           </div>
@@ -756,8 +777,8 @@ function renderMovers() {
   const shuf=[...tickers].sort(()=>Math.random()-.5);
   const gainers=shuf.slice(0,5).map(t=>({ticker:t,change:(Math.random()*8+1).toFixed(1)})).sort((a,b)=>b.change-a.change);
   const losers=shuf.slice(5,10).map(t=>({ticker:t,change:(-Math.random()*8-1).toFixed(1)})).sort((a,b)=>a.change-b.change);
-  document.getElementById('gainersList').innerHTML=gainers.map(g=>`<li class="mover-item gainer" onclick="selectTicker('${g.ticker}')"><span><span class="wl-avatar" style="display:inline-flex;width:20px;height:20px;font-size:8px;margin-right:6px;background:${(BRANDS[g.ticker]||'#555')}20;color:${BRANDS[g.ticker]||'#555'}">${g.ticker.slice(0,1)}</span>${g.ticker}</span><span class="up">+${g.change}%</span></li>`).join('');
-  document.getElementById('losersList').innerHTML=losers.map(l=>`<li class="mover-item loser" onclick="selectTicker('${l.ticker}')"><span><span class="wl-avatar" style="display:inline-flex;width:20px;height:20px;font-size:8px;margin-right:6px;background:${(BRANDS[l.ticker]||'#555')}20;color:${BRANDS[l.ticker]||'#555'}">${l.ticker.slice(0,1)}</span>${l.ticker}</span><span class="down">${l.change}%</span></li>`).join('');
+  document.getElementById('gainersList').innerHTML=gainers.map(g=>`<li class="mover-item gainer" onclick="selectTicker('${g.ticker}')"><span>${avatarHTML(g.ticker,20,8)}${g.ticker}</span><span class="up">+${g.change}%</span></li>`).join('');
+  document.getElementById('losersList').innerHTML=losers.map(l=>`<li class="mover-item loser" onclick="selectTicker('${l.ticker}')"><span>${avatarHTML(l.ticker,20,8)}${l.ticker}</span><span class="down">${l.change}%</span></li>`).join('');
 }
 
 function selectTicker(ticker){ STATE.selectedTicker=ticker; renderWatchlist(); renderDetail(); }

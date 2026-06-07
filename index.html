@@ -190,6 +190,13 @@ body {
 /* === CONTAINER === */
 .container { max-width: 1280px; margin: 0 auto; padding: 28px 32px; flex: 1; width: 100%; }
 
+/* === PAGE HEADER === */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-header h1 { font-size: 24px; font-weight: 700; font-family: 'DM Serif Display', serif; letter-spacing: -.5px; color: var(--text); }
+.page-header h1 i { color: var(--gold); margin-right: 10px; font-size: 20px; }
+.page-header .page-date { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.light .page-header h1 i { color: #b8860b; }
+
 /* === INDICES === */
 .indices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
 .index-card {
@@ -401,6 +408,10 @@ body {
   </header>
 
   <main class="container">
+    <div class="page-header">
+      <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
+      <span class="page-date" id="pageDate"></span>
+    </div>
     <section class="indices" id="indices"></section>
 
     <div class="dashboard-grid">
@@ -784,7 +795,7 @@ function renderMovers() {
 }
 
 function selectTicker(ticker){ STATE.selectedTicker=ticker; renderWatchlist(); renderDetail(); }
-function renderAll(){ renderIndices(); renderWatchlist(); renderDetail(); renderMovers(); document.getElementById('watchlistCount').textContent=STATE.watchlist.length; }
+function renderAll(){ renderIndices(); renderWatchlist(); renderDetail(); renderMovers(); document.getElementById('watchlistCount').textContent=STATE.watchlist.length; const d=new Date(); document.getElementById('pageDate').textContent=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}); }
 
 // === SEARCH ===
 document.getElementById('searchBtn').addEventListener('click',()=>{

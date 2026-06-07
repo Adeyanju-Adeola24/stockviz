@@ -397,15 +397,19 @@ body {
 .detail-change.up { background: var(--up-bg); }
 .detail-change.down { background: var(--down-bg); }
 
-#detailSparkline {
-  width: 100%; max-width: 100%; height: 140px; display: block;
-  border-radius: var(--radius-sm); background: var(--bg); padding: 4px;
+/* Chart layout - side by side */
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
 }
+.chart-col { display: flex; flex-direction: column; flex: 1; }
+.chart-col canvas { width: 100%; border-radius: var(--radius-sm); background: var(--bg); padding: 4px; }
+.chart-col-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 4px; text-align: center; }
 
 /* Timeframe buttons */
-.timeframe-bar {
-  display: flex; gap: 6px; margin-top: 12px; justify-content: center;
-}
+.timeframe-bar { display: flex; gap: 6px; }
 .timeframe-btn {
   padding: 4px 14px; border-radius: 100px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text-secondary); font-family: inherit;
@@ -415,7 +419,7 @@ body {
 .timeframe-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* Chart type toggle */
-.chart-toggle-bar { display: flex; gap: 4px; margin-top: 8px; justify-content: center; }
+.chart-toggle-bar { display: flex; gap: 4px; justify-content: center; }
 .chart-type-btn { padding: 3px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s; }
 .chart-type-btn:hover { border-color: var(--accent); color: var(--accent); }
 .chart-type-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -884,6 +888,7 @@ function renderDetail() {
   const sectorClass = 'sector-' + sector.toLowerCase();
 
   const candles = s.sparkline && s.sparkline[0]?.o ? s.sparkline : null;
+  const overviewCandles = genCandles(52, 3); // 1Y overview for right chart
 
   container.innerHTML = `
     <div class="detail-header">
@@ -900,17 +905,28 @@ function renderDetail() {
         <span class="detail-price">$${q.c.toFixed(2)}</span>
         <span class="detail-change ${isUp ? 'up' : 'down'}">${isUp ? '+' : ''}${q.dp.toFixed(2)}%</span>
       </div>
-      <canvas id="chartMain" width="800" height="160"></canvas>
-      <canvas id="chartVolume" width="800" height="40"></canvas>
-      <div class="chart-toggle-bar">
-        <button class="chart-type-btn ${STATE.chartType === 'candle' ? 'active' : ''}" data-ct="candle">Candle</button>
-        <button class="chart-type-btn ${STATE.chartType === 'line' ? 'active' : ''}" data-ct="line">Line</button>
-      </div>
-      <div class="timeframe-bar" id="timeframeBar">
-        <button class="timeframe-btn ${STATE.timeframe === '1D' ? 'active' : ''}" data-tf="1D">1D</button>
-        <button class="timeframe-btn ${STATE.timeframe === '1W' ? 'active' : ''}" data-tf="1W">1W</button>
-        <button class="timeframe-btn ${STATE.timeframe === '1M' ? 'active' : ''}" data-tf="1M">1M</button>
-        <button class="timeframe-btn ${STATE.timeframe === '1Y' ? 'active' : ''}" data-tf="1Y">1Y</button>
+      <div class="chart-row">
+        <div class="chart-col">
+          <div class="chart-col-label">Main Chart &middot; ${STATE.timeframe}</div>
+          <canvas id="chartMain" width="800" height="150"></canvas>
+          <canvas id="chartVolume" width="800" height="30"></canvas>
+          <div class="chart-toggle-bar">
+            <button class="chart-type-btn ${STATE.chartType === 'candle' ? 'active' : ''}" data-ct="candle">Candle</button>
+            <button class="chart-type-btn ${STATE.chartType === 'line' ? 'active' : ''}" data-ct="line">Line</button>
+          </div>
+          <div class="timeframe-bar" style="margin-top:6px">
+            <button class="timeframe-btn ${STATE.timeframe === '1D' ? 'active' : ''}" data-tf="1D">1D</button>
+            <button class="timeframe-btn ${STATE.timeframe === '1W' ? 'active' : ''}" data-tf="1W">1W</button>
+            <button class="timeframe-btn ${STATE.timeframe === '1M' ? 'active' : ''}" data-tf="1M">1M</button>
+            <button class="timeframe-btn ${STATE.timeframe === '1Y' ? 'active' : ''}" data-tf="1Y">1Y</button>
+          </div>
+        </div>
+        <div class="chart-col">
+          <div class="chart-col-label">Overview &middot; 1Y</div>
+          <canvas id="chartOverview" width="800" height="150"></canvas>
+          <canvas id="chartOverviewVol" width="800" height="30"></canvas>
+          <div class="chart-col-label" style="margin-top:8px;color:var(--up)">&#x25B2; Bullish Trend</div>
+        </div>
       </div>
     </div>
     <div class="detail-stats">
@@ -924,17 +940,17 @@ function renderDetail() {
       <div class="stat"><span class="stat-label">52W Low</span><span class="stat-value">$${q.w52l.toFixed(2)}</span></div>
     </div>`;
 
-  // Draw charts
+  // Draw left chart (main)
   const mainCanvas = document.getElementById('chartMain');
   const volCanvas = document.getElementById('chartVolume');
   if (mainCanvas && volCanvas) {
     const rect = mainCanvas.parentElement.getBoundingClientRect();
-    const w = Math.min(800, rect.width - 8);
+    const w = Math.min(390, rect.width - 8);
     const dpr = window.devicePixelRatio || 1;
     mainCanvas.width = w * dpr;
-    mainCanvas.height = 160 * dpr;
+    mainCanvas.height = 150 * dpr;
     volCanvas.width = w * dpr;
-    volCanvas.height = 40 * dpr;
+    volCanvas.height = 30 * dpr;
 
     const upColor = '#059669';
     const downColor = '#dc2626';
@@ -946,6 +962,21 @@ function renderDetail() {
       const prices = candles ? candleCloses(candles) : s.sparkline;
       renderSparkline(mainCanvas, prices, isUp ? upColor : downColor);
     }
+  }
+
+  // Draw right chart (1Y overview)
+  const ovCanvas = document.getElementById('chartOverview');
+  const ovVolCanvas = document.getElementById('chartOverviewVol');
+  if (ovCanvas && ovVolCanvas) {
+    const rect = ovCanvas.parentElement.getBoundingClientRect();
+    const w = Math.min(390, rect.width - 8);
+    const dpr = window.devicePixelRatio || 1;
+    ovCanvas.width = w * dpr;
+    ovCanvas.height = 150 * dpr;
+    ovVolCanvas.width = w * dpr;
+    ovVolCanvas.height = 30 * dpr;
+    renderCandles(ovCanvas, overviewCandles, '#059669', '#dc2626');
+    renderVolumeBars(ovVolCanvas, overviewCandles, '#059669', '#dc2626');
   }
 
   // Chart type toggle listeners

@@ -572,7 +572,6 @@ function genQuote(ticker){
   const pe=15+Math.random()*35;
   return {c:Math.round(c*100)/100,o:Math.round(pc*100)/100,h:Math.round(Math.max(c,pc)*1.012*100)/100,l:Math.round(Math.min(c,pc)*0.988*100)/100,pc:Math.round(pc*100)/100,dp:Math.round(((c-pc)/pc)*10000)/100,d:Math.round((c-pc)*100)/100,v:Math.floor(Math.random()*80000000+5000000),mc:Math.round(base*(Math.random()*2+0.5)*1000000000),w52h:Math.round(base*1.3*100)/100,w52l:Math.round(base*0.75*100)/100,pe:Math.round(pe*10)/10,eps:Math.round((base/pe)*100)/100,beta:Math.round((0.8+Math.random()*1.2)*100)/100,divYield:Math.round(Math.random()*2.5*100)/100,divAmount:Math.round(Math.random()*4*100)/100};
 }
-}
 function genCandles(count,vol){
   let p=100+Math.random()*200;const v=vol||1;
   const drift=(Math.random()-0.45)*0.15;
@@ -770,7 +769,7 @@ function renderDetail(){
       <div class="chart-controls">
         <div class="chart-left">
           <span class="chart-label">Timeframe</span>
-          <div class="timeframe-group">${['1D','1W','1M','1Y'].map(t=>\`<button class="timeframe-btn \${STATE.timeframe===t?'active':''}" data-tf="\${t}">\${t}</button>\`).join('')}</div>
+          <div class="timeframe-group">${['1D','1W','1M','1Y'].map(function(tf){return '<button class="timeframe-btn'+(STATE.timeframe===tf?' active':'')+'" data-tf="'+tf+'">'+tf+'</button>';}).join('')}</div>
           <span class="chart-label" style="margin-left:6px">Chart</span>
           <div class="chart-toggle-group">
             <button class="chart-toggle-btn ${STATE.chartType==='candle'?'active':''}" data-ct="candle">Candle</button>
@@ -850,8 +849,8 @@ function renderDetail(){
   const gainers=shuf.slice(0,6).map(t=>({ticker:t,change:(Math.random()*8+1).toFixed(1)})).sort((a,b)=>b.change-a.change);
   const losers=shuf.slice(6,12).map(t=>({ticker:t,change:(-Math.random()*8-1).toFixed(1)})).sort((a,b)=>a.change-b.change);
   document.getElementById('moversGrid').innerHTML=
-    `<div class="mover-col"><div class="mover-col-header"><i class="fas fa-arrow-up" style="color:var(--green);font-size:9px"></i> Top Gainers</div><ul class="mover-list">${gainers.map(g=>\`<li class="mover-item gainer" onclick="selectTicker('\${g.ticker}')"><span class="left">\${avatarHTML(g.ticker,20,8)}\${g.ticker}</span><span class="pct up">+\${g.change}%</span></li>\`).join('')}</ul></div>`+
-    `<div class="mover-col"><div class="mover-col-header"><i class="fas fa-arrow-down" style="color:var(--red);font-size:9px"></i> Top Losers</div><ul class="mover-list">${losers.map(l=>\`<li class="mover-item loser" onclick="selectTicker('\${l.ticker}')"><span class="left">\${avatarHTML(l.ticker,20,8)}\${l.ticker}</span><span class="pct down">\${l.change}%</span></li>\`).join('')}</ul></div>`;
+    '<div class="mover-col"><div class="mover-col-header"><i class="fas fa-arrow-up" style="color:var(--green);font-size:9px"></i> Top Gainers</div><ul class="mover-list">'+gainers.map(function(g){return '<li class="mover-item gainer" onclick="selectTicker(\''+g.ticker+'\')"><span class="left">'+avatarHTML(g.ticker,20,8)+g.ticker+'</span><span class="pct up">+'+g.change+'%</span></li>';}).join('')+'</ul></div>'+
+    '<div class="mover-col"><div class="mover-col-header"><i class="fas fa-arrow-down" style="color:var(--red);font-size:9px"></i> Top Losers</div><ul class="mover-list">'+losers.map(function(l){return '<li class="mover-item loser" onclick="selectTicker(\''+l.ticker+'\')"><span class="left">'+avatarHTML(l.ticker,20,8)+l.ticker+'</span><span class="pct down">'+l.change+'%</span></li>';}).join('')+'</ul></div>';
 
   // Render analyst ratings
   const ad=getAnalystData(ticker);
